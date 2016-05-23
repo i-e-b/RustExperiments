@@ -1,4 +1,3 @@
-#[derive(Show)]
 enum Direction {
     Up, Down, Left, Right
 }
@@ -20,6 +19,5 @@ fn write_shape(s:Shape) {
 }
 
 fn main() {
-    println!("{:?}", Direction::Down);
     write_shape(Shape::Circle {centre:Point{x:1.0,y:1.0}, radius:1.0});
 }
