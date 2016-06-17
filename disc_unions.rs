@@ -1,3 +1,5 @@
+use std::fmt;
+
 enum Direction {
     Up, Down, Left, Right
 }
@@ -20,4 +22,18 @@ fn write_shape(s:Shape) {
 
 fn main() {
     write_shape(Shape::Circle {centre:Point{x:1.0,y:1.0}, radius:1.0});
+    println!("The only way is {}!", Direction::Down);
 }
+
+// Add a display trait to the 'Direction' enum
+impl fmt::Display for Direction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self { // `&` gives us a borrowed reference. `*` dereferences to a value
+            Direction::Up => write!(f, "up"),
+            Direction::Down => write!(f, "down"),
+            Direction::Left => write!(f, "left"),
+            Direction::Right => write!(f, "right")
+        }
+    }
+}
+
