@@ -28,8 +28,10 @@ impl fmt::Display for List {
         }
 
         // Note: you MUST NOT have a semi-colon at the end of this line, otherwise you get
-        // non-exhaustive return error [E0269]
-        write!(f, "]") // final write WITHOUT `try` so we return the `fmt::Result` for this function.
+        // non-exhaustive return error [E0269].
+        // Alternatively, you can use a return statement:
+        //     return write!(f, "]");
+        write!(f,"]") // final write WITHOUT `try` so we return the `fmt::Result` for this function.
     }
 }
 
