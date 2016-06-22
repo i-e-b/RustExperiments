@@ -3,6 +3,14 @@
 // file in a web-browser.
 // If you add the `--test` flag, the code inside default fences will be tested,
 // although I haven't got it to work correctly yet.
+//
+// Note this odd structure -- it is a comment for the block that encloses it
+// (in this case, the whole module)
+//! A file that demontrates some RustDoc features
+//! Have a look at the source for notes on how the comments
+//! and documentation system works.
+//! [Rustdoc documentation](http://doc.rust-lang.org/book/documentation.html#documenting-modules).
+
 
 /// A point in 4-space
 pub struct PointM {
@@ -23,20 +31,19 @@ pub struct Person {
 }
 
 impl Person {
-    // Note this odd structure -- it is a comment for the block that encloses it:
-    //! This represents the essence of a person
-    // http://doc.rust-lang.org/book/documentation.html#documenting-modules
-
 
     /// Returns a new person and gives them a name
     ///
     /// # Arguments
-    /// * `name` - a strin slice that holds the name of the person
+    /// * `name` - a string slice that holds the name of the person
     ///
     /// # Example
     /// The Rust doc format is essentially *Markdown*. Yay -- **another** flavour!
+    /// There seems to be a problem with `test`ing code blocks in objects.
+    /// Nothing resolves properly. To take a Rust block out of the test set,
+    /// put its type as `ignore`.
     ///
-    /// ```
+    /// ```ignore
     /// // By default, code blocks are Rust syntax hilited
     /// let person = Person::new("name");
     /// ```
@@ -65,6 +72,14 @@ impl Person {
     }
 }
 
+/// The main function. Let's test the `Person` class
+///
+/// ```ignore
+/// let person = Person::new("Tim");
+/// ```
+///
+/// Nope, that doesn't work either.
+/// Keep an eye on [Issue 23314](https://github.com/rust-lang/rust/issues/23314) on github.
 fn main() {
     let me = Person::new("My own self");
     me.greet();
