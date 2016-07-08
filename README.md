@@ -5,9 +5,16 @@ A few little bits of Rust lang, to remind me to learn.
 
 Nothing interesting to see here. Move along.
 
+To make a new cargo project:
+
+```sh
+cargo new <proj-name> --bin
+```
+
 Hubs:
 --------
 * http://www.rust-lang.org/
+* https://crates.io/
 * https://github.com/rust-lang/rust
 * http://www.reddit.com/r/rust/
 

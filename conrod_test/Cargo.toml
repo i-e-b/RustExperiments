@@ -1,0 +1,10 @@
+[package]
+name = "conrod_test"
+version = "0.1.0"
+authors = ["Iain Ballard <iain.ballard@gmail.com>"]
+
+[dependencies]
+conrod = "0.37.1"
+find_folder = "0.3.0"
+rand = "0.3.13"
+piston_window = "0.50.0"
