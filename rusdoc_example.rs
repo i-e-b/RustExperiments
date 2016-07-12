@@ -80,6 +80,10 @@ impl Person {
 ///
 /// Nope, that doesn't work either.
 /// Keep an eye on [Issue 23314](https://github.com/rust-lang/rust/issues/23314) on github.
+///
+/// The rust book has this little nugget tucked away in the testing section:
+///   "Rust supports automatically running examples in your documentation
+///   (note: this only works in library crates, not binary crates)"
 fn main() {
     let me = Person::new("My own self");
     me.greet();
