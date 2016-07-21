@@ -1,0 +1,11 @@
+{
+   "name":"John Doe",
+   "post_count":2,
+   "likes_burgers":false,
+   "avatar":null,
+   "extraField":"not in the Rust schema",
+   "stats": {
+       "pageViews": 1982,
+       "upvotes": 2075
+   }
+}
