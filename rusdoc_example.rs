@@ -63,7 +63,7 @@ impl Person {
     pub fn new(name: &str) -> Person {
         Person {
             name: name.to_string(),
-            place: PointM {x:0.0, y:0.0, z:0.0, t:0.0 } // each person starts as their won centre
+            place: PointM {x:0.0, y:0.0, z:0.0, t:0.0 } // each person starts as their own centre
         }
     }
 
