@@ -1,3 +1,5 @@
+//! A simple but non-trivial app that reads a pair of large JSON documents
+//! And composes parts of them into a new tree structure.
 
 extern crate rustc_serialize;
 
@@ -66,22 +68,24 @@ fn main() {
 }
 
 
+#[derive(Debug)]
 struct NodeRel {
     parent: String,
     child: String,
     kind: String,
 }
+#[derive(Debug)]
 struct DecomposedTree {
     root: u32,
     rels: Vec<NodeRel>,
-    nodes: Vec<Json>,
+    nodes: BTreeMap<String, Json>, // id -> json fragment
 }
 impl DecomposedTree {
     pub fn new() -> DecomposedTree {
         DecomposedTree {
             root:  0,
             rels:  Vec::new(),
-            nodes: Vec::new(),
+            nodes: BTreeMap::new(),
         }
     }
 }
@@ -103,6 +107,7 @@ fn build_tree(root_guid: &str, relations: &RelationSet, instances: &InstanceSet)
     while let Some(parent) = queue.pop() {
         if let Some(children) = relations.get(parent) {
             for child in children {
+                // TODO: we need to mke the rels from IDs to indexes-into-nodes?
                 tree.rels.push(NodeRel{ parent:parent.to_string(), child:child.Child.to_string(), kind:child.Kind.to_string() });
                 queue.push(&child.Child);
                 all_nodes.push(parent.to_string());
@@ -114,12 +119,43 @@ fn build_tree(root_guid: &str, relations: &RelationSet, instances: &InstanceSet)
     all_nodes.sort();
     all_nodes.dedup();
 
+    // Fetch the nodes we need
+    for node_ref in all_nodes.iter() {
+        let j = convert_to_key_value(instances.get(node_ref).unwrap());
+
+        println!("{}", pretty_print(&j));
+        tree.nodes.insert(node_ref.to_string(), j);
+    }
+
     // Now go and build the tree
+    //return compose_rec(root_guid, tree); // also TODO: better structure for this
 
     println!("{} nodes, {} rels", all_nodes.len(), tree.rels.len());
 
     None
 }
+
+fn convert_to_key_value(thing: &Instance) -> Json {
+    let mut kvs: BTreeMap<String, Json> = BTreeMap::new();
+    let mut meta: BTreeMap<String, Json> = BTreeMap::new();
+
+    for pair in thing.Meta.iter() {
+        meta.insert(pair.Name.to_string(), Json::String(pair.Value.to_string()));
+    }
+
+    kvs.insert("_meta".to_string(), Json::Object(meta));
+
+    for pair in thing.Data.iter() {
+        match pair.Value {
+            Some(ref value) => kvs.insert(pair.Name.to_string(), Json::String(value.to_string())),
+            None        => kvs.insert(pair.Name.to_string(), Json::Null),
+        };
+    }
+
+    return Json::Object(kvs);
+}
+
+//fn compose_rec( . . . ) {}
 
 fn read_file_as_string(file_name: &str) -> String {
     let mut f = File::open(file_name).expect("could not open sample file");
@@ -128,7 +164,7 @@ fn read_file_as_string(file_name: &str) -> String {
     return s;
 }
 
-fn pretty_print<T: Encodable>(thing: T) -> String {
+fn pretty_print<T: Encodable>(thing: &T) -> String {
     let mut encoded = String::new();
     { // scope for the borrowing of `encoded` by `new_pretty`
         let mut encoder = Encoder::new_pretty(&mut encoded);
