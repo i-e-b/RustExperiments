@@ -70,27 +70,24 @@ fn main() {
 
 #[derive(Debug)]
 struct NodeRel {
-    parent: String,
     child: String,
     kind: String,
 }
 #[derive(Debug)]
 struct DecomposedTree {
     root: u32,
-    rels: Vec<NodeRel>,
+    rels: BTreeMap<String, Vec<NodeRel>>,  // parent id -> [child id * kind]
     nodes: BTreeMap<String, Json>, // id -> json fragment
 }
 impl DecomposedTree {
     pub fn new() -> DecomposedTree {
         DecomposedTree {
             root:  0,
-            rels:  Vec::new(),
+            rels:  BTreeMap::new(),
             nodes: BTreeMap::new(),
         }
     }
 }
-
-
 
 fn build_tree(root_guid: &str, relations: &RelationSet, instances: &InstanceSet) -> Option<Json> {
     // Plan: Build out the {parent,child,kind} relations like TreeSurgeon,
@@ -107,8 +104,8 @@ fn build_tree(root_guid: &str, relations: &RelationSet, instances: &InstanceSet)
     while let Some(parent) = queue.pop() {
         if let Some(children) = relations.get(parent) {
             for child in children {
-                // TODO: we need to mke the rels from IDs to indexes-into-nodes?
-                tree.rels.push(NodeRel{ parent:parent.to_string(), child:child.Child.to_string(), kind:child.Kind.to_string() });
+                merge(&mut tree.rels, parent.to_string(), NodeRel{ child:child.Child.to_string(), kind:child.Kind.to_string() });
+
                 queue.push(&child.Child);
                 all_nodes.push(parent.to_string());
                 all_nodes.push(child.Child.to_string());
@@ -128,11 +125,37 @@ fn build_tree(root_guid: &str, relations: &RelationSet, instances: &InstanceSet)
     }
 
     // Now go and build the tree
-    //return compose_rec(root_guid, tree); // also TODO: better structure for this
+    let outp = compose_rec(root_guid, tree);
 
     println!("{} nodes, {} rels", all_nodes.len(), tree.rels.len());
 
-    None
+    return outp;
+}
+
+fn compose_rec(current_id: &String, data: DecomposedTree) -> Json {
+    // recurse down the children, then merge into the current node, return
+    if let Some(rels) = data.rels.get(current_id) {
+        let mut blob: BTreeMap<String, Json> = BTreeMap::new();
+        for rel in rels { // rels: BTreeMap<String, Vec<NodeRel>>,  // parent id -> [child,kind]
+            let j = compose_rec(&rel.child, data);
+            blob.insert
+        }
+    }
+
+    return Json::Null;
+}
+
+fn merge<TK:Ord, TV>(map: &mut BTreeMap<TK, Vec<TV> >, key: TK, value: TV) {
+    // some of the mutable borrow stuff in here is weird.
+    // There is probably a better way to do this I haven't found.
+    { // start scope
+        let v = map.get_mut(&key); // mutable borrow of `map`, by taking mutable value
+        if let Some(list) = v {
+            list.push(value);
+            return;
+        }
+    } // end of mutable borrow, so we can now take another:
+    map.insert(key, vec![value]);
 }
 
 fn convert_to_key_value(thing: &Instance) -> Json {
@@ -148,14 +171,12 @@ fn convert_to_key_value(thing: &Instance) -> Json {
     for pair in thing.Data.iter() {
         match pair.Value {
             Some(ref value) => kvs.insert(pair.Name.to_string(), Json::String(value.to_string())),
-            None        => kvs.insert(pair.Name.to_string(), Json::Null),
+            None            => kvs.insert(pair.Name.to_string(), Json::Null),
         };
     }
 
     return Json::Object(kvs);
 }
-
-//fn compose_rec( . . . ) {}
 
 fn read_file_as_string(file_name: &str) -> String {
     let mut f = File::open(file_name).expect("could not open sample file");
