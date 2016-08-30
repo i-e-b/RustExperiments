@@ -64,32 +64,31 @@ fn main() {
 
     println!("Building tree for {}", root_guid);
     let tree = build_tree(root_guid, &relations, &instances);
-    println!("Example {:?}", tree);
+    println!("Example {}", pretty_print(&tree));
 }
 
 
-#[derive(Debug)]
 struct NodeRel {
     child: String,
     kind: String,
 }
-#[derive(Debug)]
+
 struct DecomposedTree {
-    root: u32,
     rels: BTreeMap<String, Vec<NodeRel>>,  // parent id -> [child id * kind]
-    nodes: BTreeMap<String, Json>, // id -> json fragment
+    nodes: BTreeMap<String, BTreeMap<String, Json>>, // id -> value map
 }
 impl DecomposedTree {
     pub fn new() -> DecomposedTree {
         DecomposedTree {
-            root:  0,
             rels:  BTreeMap::new(),
             nodes: BTreeMap::new(),
         }
     }
 }
 
-fn build_tree(root_guid: &str, relations: &RelationSet, instances: &InstanceSet) -> Option<Json> {
+/// Turn a relational models from the relations and instances files into
+/// a denormalised tree, as the original data would have been modelled.
+fn build_tree(root_guid: &str, relations: &RelationSet, instances: &InstanceSet) -> Json {
     // Plan: Build out the {parent,child,kind} relations like TreeSurgeon,
     //       then transform the data elements of the instance data to be key->value pairs,
     //       and finally run the reconstruction from T.S. to get a tree.
@@ -120,31 +119,39 @@ fn build_tree(root_guid: &str, relations: &RelationSet, instances: &InstanceSet)
     for node_ref in all_nodes.iter() {
         let j = convert_to_key_value(instances.get(node_ref).unwrap());
 
-        println!("{}", pretty_print(&j));
+        //println!("{}", pretty_print(&j));
         tree.nodes.insert(node_ref.to_string(), j);
     }
 
     // Now go and build the tree
-    let outp = compose_rec(root_guid, tree);
+    let outp = compose_rec(&root_guid.to_string(), &tree);
 
     println!("{} nodes, {} rels", all_nodes.len(), tree.rels.len());
 
     return outp;
 }
 
-fn compose_rec(current_id: &String, data: DecomposedTree) -> Json {
-    // recurse down the children, then merge into the current node, return
+/// Recursively build the denormalised Json format from the relational model.
+/// This involves a lot of cloning, as we need fresh copies of repeated elements.
+fn compose_rec(current_id: &String, data: &DecomposedTree) -> Json {
+    // get a mutable clone of the current node data
+    let mut blob : BTreeMap<String, Json> = data.nodes.get(current_id).unwrap().to_owned();
+
+    // recurse down the children, then merge into the current node
     if let Some(rels) = data.rels.get(current_id) {
-        let mut blob: BTreeMap<String, Json> = BTreeMap::new();
+        //let mut blob: BTreeMap<String, Json> = BTreeMap::new();
         for rel in rels { // rels: BTreeMap<String, Vec<NodeRel>>,  // parent id -> [child,kind]
             let j = compose_rec(&rel.child, data);
-            blob.insert
+            blob.insert(rel.kind.clone(), j);
         }
     }
 
-    return Json::Null;
+    // return as a Json object
+    return Json::Object(blob);
 }
 
+/// Add a key/value pair to a BTreeMap by either adding a new key with the value wrapped in a Vec,
+/// or adding the value to an existing Vec under the target key.
 fn merge<TK:Ord, TV>(map: &mut BTreeMap<TK, Vec<TV> >, key: TK, value: TV) {
     // some of the mutable borrow stuff in here is weird.
     // There is probably a better way to do this I haven't found.
@@ -158,7 +165,9 @@ fn merge<TK:Ord, TV>(map: &mut BTreeMap<TK, Vec<TV> >, key: TK, value: TV) {
     map.insert(key, vec![value]);
 }
 
-fn convert_to_key_value(thing: &Instance) -> Json {
+/// Take an Instance in the file format of `{"Name":"x", "value":"y"}` and return
+/// a map in the form `{"x":"y"}`
+fn convert_to_key_value(thing: &Instance) -> BTreeMap<String, Json> {
     let mut kvs: BTreeMap<String, Json> = BTreeMap::new();
     let mut meta: BTreeMap<String, Json> = BTreeMap::new();
 
@@ -175,9 +184,10 @@ fn convert_to_key_value(thing: &Instance) -> Json {
         };
     }
 
-    return Json::Object(kvs);
+    return kvs;
 }
 
+/// Load a whole file synchronously as a `String`
 fn read_file_as_string(file_name: &str) -> String {
     let mut f = File::open(file_name).expect("could not open sample file");
     let mut s = String::new();
@@ -185,6 +195,8 @@ fn read_file_as_string(file_name: &str) -> String {
     return s;
 }
 
+/// Return a 'pretty' formatted string from any encodable. Relies on the Encodable's own pretty
+/// print implementation
 fn pretty_print<T: Encodable>(thing: &T) -> String {
     let mut encoded = String::new();
     { // scope for the borrowing of `encoded` by `new_pretty`
