@@ -12,13 +12,18 @@
 //! required -- the compiler will insert the convertion methods for you.
 
 
-// If you want a global const string, you have to give it the `static` life-span, like this:
+// If you want a global const string, you have to give it the `static` life-span
 // Also shows unescaped strings, which start with `r#"` and end with `"#`
+// REMEMBER: `const`s are INLINED per use. If you use lots of these, your exe will be huge
 const SAMPLE_CONSTANT: &'static str = r#"
 This is
 a "unescaped"
 multi-line string
-"#
+"#;
+
+// This is a better way for global strings -- this is help in one place in the exe
+// and in memory, and gets referenced by address where needed.
+static SAMPLE_STATIC: &'static str = "This is a better way to do it";
 
 fn main(){
     let my_str: &'static str = "Hello";
