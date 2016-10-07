@@ -12,6 +12,14 @@
 //! required -- the compiler will insert the convertion methods for you.
 
 
+// If you want a global const string, you have to give it the `static` life-span, like this:
+// Also shows unescaped strings, which start with `r#"` and end with `"#`
+const SAMPLE_CONSTANT: &'static str = r#"
+This is
+a "unescaped"
+multi-line string
+"#
+
 fn main(){
     let my_str: &'static str = "Hello";
     let pt2 = ", world";
