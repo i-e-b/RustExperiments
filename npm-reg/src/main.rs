@@ -1,7 +1,12 @@
 extern crate tiny_http;
+extern crate sha1;
 
+// web hosting:
 use std::sync::Arc;
 use std::thread;
+
+// sha-sum:
+use sha1::Sha1;
 
 const SAMPLE_RESULT: &'static str = r#"
 {
