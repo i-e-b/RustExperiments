@@ -6,9 +6,15 @@ use std::sync::Arc;
 use std::thread;
 
 // sha-sum:
-use sha1::Sha1;
+//use sha1::Sha1;
 
-const SAMPLE_RESULT: &'static str = r#"
+// io
+use std::io::Read;
+use std::io::BufWriter;
+use std::fs::File;
+use std::io::Write;
+
+static SAMPLE_RESULT: &'static str = r#"
 {
   "_id" : "rusty-package",
   "_rev" : "62-d921946c06d3ef9f327d6a3014a94b22",
@@ -41,11 +47,19 @@ fn main() {
         let server = server.clone();
 
         handles.push(thread::spawn(move || {
-            for rq in server.incoming_requests() {
-                println!("received request! method: {:?}, url: {:?}, headers: {:?}",
+            for mut rq in server.incoming_requests() {
+                if let Some(length) = rq.body_length() {
+                    if length > 0 {
+                        let mut reader = rq.as_reader();
+                        write_to_file(&mut reader, "published.json");
+                    }
+                }
+
+                println!("received request! method: {:?}, url: {:?}, headers: {:?}, body length: {:?}",
                          rq.method(),
                          rq.url(),
-                         rq.headers()
+                         rq.headers(),
+                         rq.body_length()
                         );
                 let response = tiny_http::Response::from_string(SAMPLE_RESULT);
                 let _ = rq.respond(response);
@@ -55,5 +69,18 @@ fn main() {
 
     for h in handles {
         h.join().unwrap();
+    }
+}
+
+fn write_to_file(reader: &mut Read, target: &str) {
+    let f = File::create(target).expect("could not create file");
+    {
+        let mut writer = BufWriter::new(f);
+        let mut buf = &mut[0u8;1024];
+
+        while let Ok(len) = reader.read(buf) {
+            if len < 1 {break;}
+            writer.write(&buf[0..len]).expect("File write failed");
+        }
     }
 }

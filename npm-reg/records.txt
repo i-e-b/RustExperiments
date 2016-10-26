@@ -1,16 +1,34 @@
-received request! method: Get, url: "/rusty-package", headers: [Header { field: HeaderField("accept-encoding"), val
-ue: "gzip" }, Header { field: HeaderField("version"), value: "3.8.7" }, Header { field: HeaderField("accept"), valu
-e: "application/json" }, Header { field: HeaderField("referer"), value: "install rusty-package@0.0.1" }, Header { f
-ield: HeaderField("npm-session"), value: "7fde873242b87b69" }, Header { field: HeaderField("user-agent"), value: "n
-pm/3.8.7 node/v6.3.0 win32 x64" }, Header { field: HeaderField("host"), value: "localhost:9975" }, Header { field:
-HeaderField("Connection"), value: "keep-alive" }]
+An install comes as two calls, one to get the meta data:
 
+    received request! method: Get, url: "/rusty-package", headers: [Header { field: HeaderField("accept-encoding"), val
+    ue: "gzip" }, Header { field: HeaderField("version"), value: "3.8.7" }, Header { field: HeaderField("accept"), valu
+    e: "application/json" }, Header { field: HeaderField("referer"), value: "install rusty-package@0.0.1" }, Header { f
+    ield: HeaderField("npm-session"), value: "7fde873242b87b69" }, Header { field: HeaderField("user-agent"), value: "n
+    pm/3.8.7 node/v6.3.0 win32 x64" }, Header { field: HeaderField("host"), value: "localhost:9975" }, Header { field:
+    HeaderField("Connection"), value: "keep-alive" }]
 
-received request! method: Get, url: "/rusty-package/-/rusty-package-0.0.1.tgz", headers: [Header { field: HeaderFie
-ld("version"), value: "3.8.7" }, Header { field: HeaderField("accept"), value: "application/x-tar, application/vnd.
-github+json; q=0.1" }, Header { field: HeaderField("referer"), value: "install rusty-package@0.0.1" }, Header { fie
-ld: HeaderField("npm-session"), value: "7fde873242b87b69" }, Header { field: HeaderField("user-agent"), value: "npm
-/3.8.7 node/v6.3.0 win32 x64" }, Header { field: HeaderField("host"), value: "localhost:9975" }, Header { field: He
-aderField("Connection"), value: "keep-alive" }]
+then another to get the preferred version's .tgz file
+
+    received request! method: Get, url: "/rusty-package/-/rusty-package-0.0.1.tgz", headers: [Header { field: HeaderFie
+    ld("version"), value: "3.8.7" }, Header { field: HeaderField("accept"), value: "application/x-tar, application/vnd.
+    github+json; q=0.1" }, Header { field: HeaderField("referer"), value: "install rusty-package@0.0.1" }, Header { fie
+    ld: HeaderField("npm-session"), value: "7fde873242b87b69" }, Header { field: HeaderField("user-agent"), value: "npm
+    /3.8.7 node/v6.3.0 win32 x64" }, Header { field: HeaderField("host"), value: "localhost:9975" }, Header { field: He
+    aderField("Connection"), value: "keep-alive" }]
 
 it then tries to shasum check that befor unpacking
+
+
+publishing looks like this:
+
+    received request! method: Put, url: "/sample-package", headers: [Header { field: HeaderField("accept-encoding"), va
+    lue: "gzip" }, Header { field: HeaderField("authorization"), value: "Bearer uER63Yy8u2Z3FsBKeqY5lA==" }, Header { f
+    ield: HeaderField("version"), value: "3.8.7" }, Header { field: HeaderField("accept"), value: "application/json" },
+    Header { field: HeaderField("referer"), value: "publish" }, Header { field: HeaderField("npm-session"), value: "a1
+    ab31dd1624267e" }, Header { field: HeaderField("user-agent"), value: "npm/3.8.7 node/v6.9.0 win32 x64" }, Header {
+    field: HeaderField("host"), value: "localhost:9975" }, Header { field: HeaderField("content-type"), value: "applica
+    tion/json" }, Header { field: HeaderField("content-length"), value: "1148" }, Header { field: HeaderField("Connecti
+    on"), value: "keep-alive" }], body length: Some(1148)
+
+The body of the publish has a json package in a single version, with the actual package's .tgz file as a base64 encoded blob.
+
