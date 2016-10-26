@@ -4,5 +4,6 @@ version = "0.1.0"
 authors = ["Iain Ballard <iain.ballard@gmail.com>"]
 
 [dependencies]
+rustc-serialize = "0.3.19"
 tiny_http = "0.5.5"
 sha1 = "0.2.0"

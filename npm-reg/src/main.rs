@@ -1,5 +1,6 @@
 extern crate tiny_http;
-extern crate sha1;
+extern crate rustc_serialize;
+//extern crate sha1;
 
 // web hosting:
 use std::sync::Arc;
@@ -13,6 +14,12 @@ use std::io::Read;
 use std::io::BufWriter;
 use std::fs::File;
 use std::io::Write;
+
+// json
+use rustc_serialize::Encodable;
+use rustc_serialize::json::{self, Encoder, Json, BuilderError};
+use rustc_serialize::base64::{self, FromBase64};
+
 
 static SAMPLE_RESULT: &'static str = r#"
 {
@@ -51,7 +58,14 @@ fn main() {
                 if let Some(length) = rq.body_length() {
                     if length > 0 {
                         let mut reader = rq.as_reader();
-                        write_to_file(&mut reader, "published.json");
+                        //write_to_file(&mut reader, "published.json");
+                        let pkg = decode_json_from_reader(&mut reader).unwrap();
+
+                        if let Some(ref data) = pkg.find_path(&vec!["_attachments","sample-package-1.0.0.tgz","data"]) {
+                            // would need to read the attachments given rather than hard-coding.
+                            println!("Data: {}", data);
+                        }
+
                     }
                 }
 
@@ -83,4 +97,13 @@ fn write_to_file(reader: &mut Read, target: &str) {
             writer.write(&buf[0..len]).expect("File write failed");
         }
     }
+}
+
+fn decode_json_from_reader(reader: &mut Read) -> Result<Json, BuilderError> {
+    let mut encoded = String::new();
+
+    reader.read_to_string(&mut encoded).expect("could not read posted data");
+    return json::Json::from_str(&encoded);
+
+    // "string".from_base64().unwrap(); -> Vec<u8>
 }
