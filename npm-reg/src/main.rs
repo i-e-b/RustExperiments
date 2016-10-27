@@ -109,17 +109,36 @@ fn handle_request(rq : DetachedRequest) -> ByteResult {
     }
 }
 
+static ATTACH_DIR: &'static str = "-";
+
 fn receive_publish(rq: DetachedRequest) -> ByteResult {
     if let Some(length) = rq.body_length {
         if length > 0 {
             let pkg = decode_json_from_bytes(rq.request_body).unwrap();
 
-            if let Some(ref data) = pkg.find_path(&vec!["_attachments","sample-package-1.0.0.tgz","data"]) {
-                // would need to read the attachments given rather than hard-coding.
-                println!("Data: {}", data);
-                write_base64_to_file(&data.to_string(), "sample-package-1.0.0.tgz");
-            }
+            // get the package id (which is the file-system safe name?)
+            let pkg_id = match pkg.find("_id") {
+                Some(id) => id.as_string().unwrap(),
+                _ => {
+                    return Response::from_string("Package has no ID").with_status_code(400);
+                }
+            };
 
+            // store the package attachments (this should be AFTER validating the version)
+            if let Some(ref attachments) = pkg.find("_attachments") {
+                if let Some(a_map) = attachments.as_object() {
+                    // attachments are a BTreeMap
+                    for file_name in a_map.keys() {
+                        if let Some(ref data) = pkg.find_path(&vec!["_attachments",&file_name,"data"]) {
+                            let target_path = (vec![pkg_id, ATTACH_DIR, file_name]).join("/");
+                            println!("Writing to path {}", target_path);
+
+                            // TODO: need to create the lead-up folders if they don't already exist
+                            write_base64_to_file(&data.to_string(), &target_path);
+                        }
+                    }
+                }
+            }
         }
     }
 
