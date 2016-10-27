@@ -2,9 +2,15 @@ extern crate tiny_http;
 extern crate rustc_serialize;
 //extern crate sha1;
 
-// web hosting:
+// web hosting: (docs at https://frewsxcv.github.io/tiny-http/tiny_http/index.html )
+use tiny_http::{Server, Method, Request, Response, Header};
 use std::sync::Arc;
 use std::thread;
+
+use std::cell::RefCell;
+use std::rc::Rc;
+
+type ByteResult = Response<std::io::Cursor<Vec<u8>>>;
 
 // sha-sum:
 //use sha1::Sha1;
@@ -20,6 +26,32 @@ use rustc_serialize::Encodable;
 use rustc_serialize::json::{self, Encoder, Json, BuilderError};
 use rustc_serialize::base64::{self, FromBase64};
 
+// Pull out the request only-parts of a request
+// so we can hold on to the real `Request` fro a response
+struct DetachedRequest {
+    method: Method,
+    url: String,
+    headers: Vec<Header>,
+    body_length: Option<usize>,
+    remote_addr: Box<std::net::SocketAddr>,
+    request_body: Vec<u8>,
+}
+impl DetachedRequest {
+    pub fn from_request(rq: &mut Request) -> DetachedRequest {
+        let mut body_in_mem: Vec<u8> = Vec::new();
+        rq.as_reader().read_to_end(&mut body_in_mem); // this is not good, but will have to do for now,
+                                                 // until I work out the ownership of as_reader()
+
+        DetachedRequest {
+            method: rq.method().clone(),
+            url: rq.url().to_owned(),
+            headers: rq.headers().to_vec(),
+            body_length: rq.body_length(),
+            remote_addr: Box::new(*rq.remote_addr()), // note to learner: this heap-allocates the address and will deallocate on drop
+            request_body: body_in_mem,
+        }
+    }
+}
 
 static SAMPLE_RESULT: &'static str = r#"
 {
@@ -45,7 +77,7 @@ static SAMPLE_RESULT: &'static str = r#"
 "#;
 
 fn main() {
-    let server = Arc::new(tiny_http::Server::http("0.0.0.0:9975").unwrap());
+    let server = Arc::new(Server::http("0.0.0.0:9975").unwrap());
     println!("Now listening on port 9975");
 
     let mut handles = Vec::new();
@@ -55,28 +87,8 @@ fn main() {
 
         handles.push(thread::spawn(move || {
             for mut rq in server.incoming_requests() {
-                if let Some(length) = rq.body_length() {
-                    if length > 0 {
-                        let mut reader = rq.as_reader();
-                        //write_to_file(&mut reader, "published.json");
-                        let pkg = decode_json_from_reader(&mut reader).unwrap();
-
-                        if let Some(ref data) = pkg.find_path(&vec!["_attachments","sample-package-1.0.0.tgz","data"]) {
-                            // would need to read the attachments given rather than hard-coding.
-                            println!("Data: {}", data);
-                        }
-
-                    }
-                }
-
-                println!("received request! method: {:?}, url: {:?}, headers: {:?}, body length: {:?}",
-                         rq.method(),
-                         rq.url(),
-                         rq.headers(),
-                         rq.body_length()
-                        );
-                let response = tiny_http::Response::from_string(SAMPLE_RESULT);
-                let _ = rq.respond(response);
+                let dtrq = DetachedRequest::from_request(&mut rq);
+                let _ = rq.respond(handle_request(dtrq));
             }
         }));
     //}
@@ -86,24 +98,59 @@ fn main() {
     }
 }
 
-fn write_to_file(reader: &mut Read, target: &str) {
-    let f = File::create(target).expect("could not create file");
-    {
-        let mut writer = BufWriter::new(f);
-        let mut buf = &mut[0u8;1024];
-
-        while let Ok(len) = reader.read(buf) {
-            if len < 1 {break;}
-            writer.write(&buf[0..len]).expect("File write failed");
+fn handle_request(rq : DetachedRequest) -> ByteResult {
+    match rq.method {
+        Method::Put => receive_publish(rq),
+        Method::Get => deliver_stored(rq),
+        _ => {
+            println!("Unsupported HTTP verb {}", rq.method);
+            Response::from_string("Unsupported request").with_status_code(400)
         }
     }
 }
 
-fn decode_json_from_reader(reader: &mut Read) -> Result<Json, BuilderError> {
-    let mut encoded = String::new();
+fn receive_publish(rq: DetachedRequest) -> ByteResult {
+    if let Some(length) = rq.body_length {
+        if length > 0 {
+            let pkg = decode_json_from_bytes(rq.request_body).unwrap();
 
-    reader.read_to_string(&mut encoded).expect("could not read posted data");
-    return json::Json::from_str(&encoded);
+            if let Some(ref data) = pkg.find_path(&vec!["_attachments","sample-package-1.0.0.tgz","data"]) {
+                // would need to read the attachments given rather than hard-coding.
+                println!("Data: {}", data);
+                write_base64_to_file(&data.to_string(), "sample-package-1.0.0.tgz");
+            }
 
-    // "string".from_base64().unwrap(); -> Vec<u8>
+        }
+    }
+
+    println!("received request! method: {:?}, url: {:?}, headers: {:?}, body length: {:?}",
+                rq.method,
+                rq.url,
+                rq.headers,
+                rq.body_length
+            );
+
+    return Response::from_string("{}");
+}
+
+fn deliver_stored(rq: DetachedRequest) -> ByteResult {
+    return Response::from_string(SAMPLE_RESULT);
+}
+
+fn write_base64_to_file(b64str: &str, target: &str) {
+    let slice: &str = b64str.trim_matches('"');
+    write_to_file(
+        slice.from_base64().expect("invalid base64 string"),
+        target
+    );
+}
+
+fn write_to_file(data: Vec<u8>, target: &str) {
+    let f = File::create(target).expect("could not create file");
+    let mut writer = BufWriter::new(f);
+    writer.write(&data).expect("File write failed");
+}
+
+fn decode_json_from_bytes(data: Vec<u8>) -> Result<Json, BuilderError> {
+    return json::Json::from_str(std::str::from_utf8(&data).unwrap());
 }
