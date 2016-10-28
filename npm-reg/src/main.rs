@@ -24,7 +24,7 @@ use rustc_serialize::json::{self, Encoder, Json, BuilderError};
 use rustc_serialize::base64::{FromBase64};
 
 // Pull out the request only-parts of a request
-// so we can hold on to the real `Request` fro a response
+// so we can hold on to the real `Request` for a response
 struct DetachedRequest {
     method: Method,
     url: String,
@@ -60,21 +60,26 @@ fn main() {
     let server = Arc::new(Server::http("0.0.0.0:9975").unwrap());
     println!("Now listening on port 9975");
 
-    let mut handles = Vec::new();
-
-    //for _ in 0 .. 4 {
+    loop {
         let server = server.clone();
 
-        handles.push(thread::spawn(move || {
+        let join_handle = thread::spawn(move || {
             for mut rq in server.incoming_requests() {
                 let dtrq = DetachedRequest::from_request(&mut rq);
                 let _ = rq.respond(handle_request(dtrq));
             }
-        }));
-    //}
+        });
 
-    for h in handles {
-        h.join().unwrap();
+        match join_handle.join() {
+            Ok(_) => println!("Thread died with no panic?!"),
+            Err(e) => {
+                if let Some(e) = e.downcast_ref::<&'static str>() {
+                    println!("Thread panic: {}", e);
+                } else {
+                    println!("Thread panic: {:?}", e);
+                }
+            }
+        }
     }
 }
 
@@ -131,7 +136,7 @@ fn receive_publish(rq: DetachedRequest) -> ByteResult {
     }
 
     // write the package.json file out. TODO: this should remove '_attachments' and
-    // merge the new version into existing versions.
+    // all other '_...' fields, then merge the new version into existing versions.
     let meta_file_path = (vec![pkg_id, "meta.json"]).join("/");
     if let Err(e) = write_to_file(json_to_bytes(&pkg), &meta_file_path) {
         println!("Failed to write meta '{}': {:?}", meta_file_path, e);
