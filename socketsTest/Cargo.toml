@@ -1,7 +1,6 @@
 [package]
-name = "http-proxy"
+name = "socketsTest"
 version = "0.1.0"
 authors = ["Iain Ballard <iain.ballard@gmail.com>"]
 
 [dependencies]
-hyper = { git = "https://github.com/i-e-b/hyper" }

@@ -41,7 +41,7 @@ fn main(){
 
     // New editable string and append to it:
     let mut string_e = String::new();
-    string_e.push_str(my_str);
+    string_e.push_str(SAMPLE_CONSTANT);
 
     // Prove that we are editable:
     string_a.push_str(pt2);
@@ -61,5 +61,10 @@ fn main(){
     let immutable_string        = &string_a; // This is `&String` type
     let slice_string     : &str = &string_a; // This is `&str` type
 
+    // Converting to and from bytes:
+    let bytes: Vec<u8> = SAMPLE_STATIC.to_string().into_bytes();
+    let decoded        = String::from_utf8(bytes).expect("could not decode string bytes");
+
     println!("{} = {}", immutable_string, slice_string);
+    println!("{} = {}", SAMPLE_STATIC, &decoded);
 }
