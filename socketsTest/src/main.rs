@@ -14,7 +14,9 @@ Accept: text/html
 
 fn main() {
     let mut result: Vec<u8> = Vec::new();
-    let mut stream = TcpStream::connect("153.104.63.227:80").unwrap(); // www.purple.com
+    let mut stream = TcpStream::connect("www.purple.com:80").unwrap();
+        // This is equivalent to `TcpStream::connect("153.104.63.227:80")` due to the
+        // std::net::ToSocketAddrs trait.
 
     stream.set_read_timeout(Some(Duration::new(5,0)));
 
