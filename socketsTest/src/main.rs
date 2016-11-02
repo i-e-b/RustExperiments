@@ -14,24 +14,33 @@ Accept: text/html
 
 fn main() {
     let mut result: Vec<u8> = Vec::new();
+    println!("Connecting");
     let mut stream = TcpStream::connect("www.purple.com:80").unwrap();
         // This is equivalent to `TcpStream::connect("153.104.63.227:80")` due to the
         // std::net::ToSocketAddrs trait.
 
-    stream.set_read_timeout(Some(Duration::new(5,0)));
+    stream.set_read_timeout(Some(Duration::from_millis(500))).unwrap();
+    stream.set_write_timeout(Some(Duration::from_millis(500))).unwrap();
+    // stream.set_nonblocking(false).unwrap(); // The socket is blocking by default.
 
+    println!("Writing request");
     if let Err(e) = stream.write(&(SAMPLE_REQUEST.to_string().into_bytes())) {
         println!("Failed to write socket:{:?}", e);
         return;
     }
+    println!("Flushing");
+    stream.flush().expect("Could not flush tcp stream");
 
+    print!("Reading response");
     let mut buf = &mut[0u8;1024];
     while let Ok(len) = stream.read(buf) {
         if len < 1 {break;}
+        print!(".");
         result.extend(buf[0..len].iter().cloned()); // Does the equivalent of `result.push(&buf[0..len]);`
                                                     // but copies the values from the buffer into
                                                     // the result vector.
     }
+    println!("");
 
     let result_str = String::from_utf8_lossy(&result);
     println!("{}", &result_str);

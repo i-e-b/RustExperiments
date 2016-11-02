@@ -1,5 +1,5 @@
 [package]
-name = "socketsTest"
+name = "sockets_test"
 version = "0.1.0"
 authors = ["Iain Ballard <iain.ballard@gmail.com>"]
 
