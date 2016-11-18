@@ -153,16 +153,7 @@ fn compose_rec(current_id: &String, data: &DecomposedTree) -> Json {
 /// Add a key/value pair to a BTreeMap by either adding a new key with the value wrapped in a Vec,
 /// or adding the value to an existing Vec under the target key.
 fn merge<TK:Ord, TV>(map: &mut BTreeMap<TK, Vec<TV> >, key: TK, value: TV) {
-    // some of the mutable borrow stuff in here is weird.
-    // There is probably a better way to do this I haven't found.
-    { // start scope
-        let v = map.get_mut(&key); // mutable borrow of `map`, by taking mutable value
-        if let Some(list) = v {
-            list.push(value);
-            return;
-        }
-    } // end of mutable borrow, so we can now take another:
-    map.insert(key, vec![value]);
+    map.entry(key).or_insert(vec![]).push(value);
 }
 
 /// Take an Instance in the file format of `{"Name":"x", "value":"y"}` and return
